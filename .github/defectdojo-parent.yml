@@ -1,0 +1,91 @@
+name: DefectDojo Dependabot Parent Pipeline             
+# https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
+on:
+  workflow_call:
+    inputs:
+      RUNNER_NAME:
+        description: 'Runner name for execution ' 
+        default: linux
+        required: false
+        type: string
+      # github.repository
+      REPO_NAME:
+        description: 'Name of the repository we are scanning'
+        required: true
+        type: string
+      # github.repository_owner
+      ORG_NAME:  
+        description: 'Orgnization that the repository belongs to.' 
+        required: true
+        type: string
+      # github.sha
+      COMMIT_HASH:  
+        description: 'Commit hash of this build' 
+        required: true
+        type: string
+      # github.run_number
+      BUILD_ID:  
+        description: 'Build run number from github actions' 
+        required: true
+        type: string
+      # Production
+      ENVIRONMENT:  
+        description: 'environment the scan is coming from' 
+        required: true
+        type: string
+      # github.workspace
+      PATH:  
+        description: 'The default working directory on the runner for steps, and the default location of your repository when using the checkout action' 
+        required: true
+        type: string
+      SCAN_TYPE:  
+        description: 'Type of Scan accepted by Defect Dojo. Examples include Github Vulnerability Scan, twistcli, etc.' 
+        required: true
+        type: string
+      ENGAGEMENT_NAME:  
+        description: 'Name of the engagement to upload results to. Engagements are moments in time when testing is taking place.' 
+        required: true
+        type: string
+      TEST_TITLE:  
+        description: 'Name of the kind of test. For example, Dependabot_Scan.' 
+        required: true
+        type: string
+
+    secrets:
+      GH_TOKEN:
+        description: 'Github Token to query API' 
+        required: true
+      DEFECT_DOJO_TOKEN:
+        description: 'DefectDojo API Header token' 
+        required: true
+
+jobs:
+  DefectDojo-Upload:
+    runs-on: ${{ inputs.RUNNER_NAME }}
+    env:
+      PythonVersion: 3.x
+      RequirementsPath:  WS-DefectDojo\DefectDojo\requirements.txt
+      ScriptPath:  WS-DefectDojo\DefectDojo\graphql-api.py
+    
+    steps:
+      - name: Checking out
+        uses: actions/checkout@v3
+
+      # Initializes and keeps submodule up to date with remote repo
+      - name: Update DefectDojo submodule 
+        run: |
+          git submodule init
+          git submodule update --remote WS-DefectDojo
+
+      - name: Setup Python environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PythonVersion }} # Version range or exact version of a Python version to use, using SemVer's version range syntax
+          architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
+          cache: 'pip'
+
+      - name: Restore dependencies
+        run: pip install -r ${{ inputs.PATH }}${{ env.RequirementsPath }}
+
+      - name: Run Script
+        run: python ${{ inputs.PATH }}${{ env.ScriptPath }}  ${{ secrets.GH_TOKEN }} '${{ inputs.REPO_NAME }}' '${{ inputs.ORG_NAME }}' '${{ inputs.COMMIT_HASH }}' '${{ inputs.BUILD_ID }}' '${{ inputs.ENVIRONMENT }}' '${{ secrets.DEFECT_DOJO_TOKEN }}' '${{ inputs.SCAN_TYPE }}' '${{ inputs.ENGAGEMENT_NAME }}' '${{ inputs.TEST_TITLE }}'
