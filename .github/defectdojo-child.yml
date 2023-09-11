@@ -1,0 +1,31 @@
+name: DefectDojo Child Workflow
+
+
+on: 
+  push:
+  workflow_dispatch: 
+
+# Each Job corresponds to a branch. The jobs all call the same central workflow file.
+# Environment specific variables are declared here and passed to the workflow
+# Branch name determines which job gets call on the other side.
+# Docs:
+## https://docs.github.com/en/actions/learn-github-actions/expressions
+## https://docs.github.com/en/actions/using-workflows/reusing-workflows
+jobs:
+  Scan-and-Upload:
+    #if: github.ref_name  == 'master'
+    uses: DefectDojo/.github/workflows/defectdojo-parent.yml@master
+    with:
+      RUNNER_NAME: Windows
+      REPO_NAME: ${{ github.repository }}
+      ORG_NAME: ${{ github.repository_owner }}
+      COMMIT_HASH: ${{ github.sha }}
+      BUILD_ID: ${{ github.run_number }}
+      ENVIRONMENT: Production
+      PATH: ${{ github.workspace }}
+      SCAN_TYPE: Github Vulnerability Scan
+      ENGAGEMENT_NAME: 2022 Dependabot Scan
+      TEST_TITLE: Dependabot_Findings  
+    secrets:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      DEFECT_DOJO_TOKEN: ${{ secrets.DEFECT_DOJO_TOKEN }}
